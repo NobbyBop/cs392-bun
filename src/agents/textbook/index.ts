@@ -3,11 +3,20 @@ import type { AgentRequest, AgentResponse, AgentContext } from "@agentuity/sdk";
 	Using a combo of pdf-lib and unpdf (which uses Mozilla pdf.js) here.
 	pdf-lib splits the main textbook into a smaller pdf which
 	unpdf can then extract text from.
+
+	Note: I probably could pre-textify the textbook pdf to increase speed
+	and not need to use pdf-lib or unpdf, but leaving in for proof-of-concept purposes.
 */
 import { PDFDocument } from "pdf-lib";
 import { definePDFJSModule, extractText, getDocumentProxy } from 'unpdf'
+
 // Needs to use the legacy build for Bun.
-await definePDFJSModule(() => import('pdfjs-dist/legacy/build/pdf.mjs').then(mod => mod))
+await definePDFJSModule(async () => {
+	const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+	// Needed to manually specify this, not found automatically for some reason?
+	pdfjs.GlobalWorkerOptions.workerSrc = require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs');;
+	return pdfjs;
+  });
 
 import OpenAI from "openai";
 
@@ -69,15 +78,35 @@ export default async function Agent(
 
 	// If this happens to be a follow up question, the previous question should also be accounted for.
 	let promptString1 = `
-You will be given a user message and a table of contents for a Systems Programming textbook. 
-It is your job to select between 1-5 pages from the the textbook based what
-you believe will best answer the message. Please only return the page numbers in [] 
-as they appear in the table of contents, separated by commas. Do not include anything
-else in your response. If you do not believe the message is related to the textbook,
+You will be given a user message and a Table of Contents (TOC) for a Systems Programming textbook.
+
+The format of each line in the TOC is: Section Number, Section Title, Start Page.
+
+It is your job to select between 1-3 SECTIONS from the the textbook based what
+you believe will best answer the message. Please PAGE NUMBERS in [] associated with each section, separated by commas.
+Your final result should have at between 1-7 pages total. NO MORE THAN 5 pages.
+
+Note: to determine which page numbers go with which sections look at where your chosen section begins, 
+and choose consecutive pages between (inclusive) your chosen section and the next section. (They will all not be explicitly listed.)
+
+Example:
+	"I want to know about cars"
+	TOC: 
+	...
+	4.5 Cars (page 10)
+	4.7 Not Cars (page 13)
+	...
+	5.5 Tangentially Related To Cars (page 26)
+	5.6 Nothing to do with Cars at all (page 27)
+	...
+	You would want to choose section 4.5 and 5.5
+	One possible selection of pages could be: [10, 11, 12, 13, 26, 27]
+
+Do not include anything other than the page numbers in your response. If you do not believe the message is related to the textbook,
 return an empty [].
 
 The message: "${userMsg}"
-The table of contents: "${TOC}"
+The TOC: "${TOC}"
 	`
 	if(userReq.followUp) promptString1 += `
 The first message is a follow-up to this message: "${userReq.lastMessage}"
@@ -96,57 +125,59 @@ to determine page numbers, which still must be in [] separated by commas.
 	});
 
 	const pageNumsResp = completion1.choices[0]?.message.content;
+	ctx.logger.debug("Agent selected pages: ", pageNumsResp);
 	let pageNums = parsePageNums(pageNumsResp);
 	if(pageNums === null) return resp.text("Cannot answer that with the textbook.")
 	
-	return resp.text(pageNumsResp?? "Got nothing");
-// 	// Creating an intermediate PDF that contains only the pages the agent selected.
-// 	let resultPDF = await PDFDocument.create();
-// 	let copiedPages = await resultPDF.copyPages(textbook, pageNums);
-// 	for(const page of copiedPages){
-// 		resultPDF.addPage(page);
-// 	}
-// 	// Here is the intermediate pdf from which we can extract text.
-// 	let resultBytes = await resultPDF.save();
+	// return resp.text(pageNumsResp?? "Got nothing");
+	// Creating an intermediate PDF that contains only the pages the agent selected.
+	let resultPDF = await PDFDocument.create();
+	let copiedPages = await resultPDF.copyPages(textbook, pageNums);
+	for(const page of copiedPages){
+		resultPDF.addPage(page);
+	}
+	// Here is the intermediate pdf from which we can extract text.
+	let resultBytes = await resultPDF.save();
 
-// 	// Now use unpdf to extract it.
-// 	let parsingPDF = await getDocumentProxy(resultBytes);
-// 	const {text} = await extractText(parsingPDF, {mergePages:true});
+	// Now use unpdf to extract it.
+	let parsingPDF = await getDocumentProxy(resultBytes);
+	const {text} = await extractText(parsingPDF, {mergePages:true});
+	// return resp.text(text);
 
-// 	let promptString2 =`
-// You are going to receieve a user message and an exerpt(s) from the a Systems Programming textbook.
-// Based on only the exerpts, try to respond to the message. Use the exerpt(s) as your primary source
-// for your response. Keep your response clear and concise (no more than 5 sentences for the most
-// complicated response).
+	let promptString2 =`
+You are going to receieve a user message and an exerpt(s) from the a Systems Programming textbook.
+Based on only the exerpts, try to respond to the message. Use the exerpt(s) as your primary source
+for your response. Keep your response clear and concise (no more than 5 sentences for the most
+complicated response). End your message with "Textbook Pages:${pageNumsResp}."
 
-// The message: "${userMsg}"
-// The exerpts: "${text}"
-// 	`
-// 	if(userReq.followUp) promptString2 += `
-// The first message is a follow-up to this message: "${userReq.lastMessage}"
-// To which you replied: "${userReq.lastResponse}"
-// You may use this interaction to assist with your response.
-// 	`
+The message: "${userMsg}"
+The exerpts: "${text}"
+	`
+	if(userReq.followUp) promptString2 += `
+The first message is a follow-up to this message: "${userReq.lastMessage}"
+To which you replied: "${userReq.lastResponse}"
+You may use this interaction to assist with your response. Please acknowledge the follow-up and that you will do better this time before responding.
+`
 
-// 	// Finally, we ask the agent to answer the question based on the selected pages from the textbook!
-// 	const completion2 = await client.chat.completions.create({
-// 		messages: [
-// 			{
-// 				role: "user",
-// 				content: promptString2,
-// 			},
-// 		],
-// 		model: "gpt-4o-mini",
-// 	});
+	// Finally, we ask the agent to answer the question based on the selected pages from the textbook!
+	const completion2 = await client.chat.completions.create({
+		messages: [
+			{
+				role: "user",
+				content: promptString2,
+			},
+		],
+		model: "gpt-4o-mini",
+	});
 
-// // 	const response = completion2.choices[0]?.message.content;
+	const response = completion2.choices[0]?.message.content;
 
-// 	// TODO: figure out how to also return the relevant pdf pages.
-// 	return resp.text(response ?? "Problem generating response.");
+	// TODO: figure out how to also return the relevant pdf pages.
+	return resp.text(response ?? "Problem generating response.");
 }
 
 /*
-	This table of contents will be used by the agent to request specific pages of the PDF.
+	This TOC will be used by the agent to request specific pages of the PDF.
 	Requiring the agent to use this first will protect it against reading the entire PDF every time
 	when only specific sections are required.
 */

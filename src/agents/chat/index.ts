@@ -19,15 +19,17 @@ function isValidRequest(data: userRequest | null | undefined): data is userReque
 }
 
 /*
-This agent will take requests (as plain text) from the user and do the following things:
+This agent will take requests format {user:string, message:string} from the user and do the following things:
 	1. Categorize it into one of three options:
 		0. Logistics - relating to course logistics.
 		1. Textbook - relating to course concepts covered in the textbook.
 		2. Code - relating to the programming assignments for the class.
 		OR
 		3. Nonsense - if the user's message cannot be put into any of those three categories.
-	2. Hands off the request to the relevant agent. 
-		(Keeps # of tokens down when only answering logistics questions for example.)
+	2. Sends the request to the relevant agent. 
+		(Keeps # of tokens needed down when only answering simple questions, logistics for example.)
+	3. Receieves response from other agent and displays to user.
+	4. Record user-specific information about most recent session: category, message, response in Key-Value pair.
 */
 
 export default async function Agent(
@@ -55,10 +57,16 @@ It is your job to categorize this message as one of the following:
 2. Code 
 	- asks about a specific homework assignment.
 	- asks for feedback about specific piece of code.
-F. Follow-Up - appears to be asking for repetition, elaboration, or clarification.
+F. Follow-Up 
+	- appears to be asking for repetition, elaboration, or clarification.
+	- uses correcting language like "no".
+	- makes unclear references like "this" or "that".
 
 If you decide that the input from the user cannot fall into any of those categories you can place it in a fourth category:
-3. Nonsense - an input which cannot be handled as it is not relevant to Systems Programming.
+3. Nonsense 
+	- an input which cannot be handled as it is not relevant to Systems Programming. 
+	- should be reserved for messages that are clearly unanswerable.
+	- vague questions should be considered follow-ups most of the time.
 
 The student message is as follows: 
 "${userMsg}"
