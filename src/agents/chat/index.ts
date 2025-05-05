@@ -43,14 +43,22 @@ export default async function Agent(
 	
 	// Setting up prompt, adding last category used if applicable.
 	let contentString =`
-Below is a message from a student regarding the course CS 392: Systems Programming. 
-It is your job to categorize this response as one of the following:
+The Systems Programming Course (CS 392) covers a six main topics spread across different chapters:
+Shell Programming, C Programming Language, Systems Programming Concepts, File Subsystem, Process Control Subsystem,
+and Inter-Process Communication.
+Below is a message from a student regarding the course CS 392.
+It is your job to categorize this message as one of the following:
 0. Logistics - relating to course logistics.
-1. Textbook - relating to course concepts covered in the textbook.
-2. Code - asks about a specific homework assignment.
+1. Textbook 
+	- relating to Systems Programming concepts covered in one of the six textbook chapters. 
+	- if it is a general programming question, you should select this category.
+2. Code 
+	- asks about a specific homework assignment.
+	- asks for feedback about specific piece of code.
 F. Follow-Up - appears to be asking for repetition, elaboration, or clarification.
+
 If you decide that the input from the user cannot fall into any of those categories you can place it in a fourth category:
-3. Nonsense - an input which cannot be handled as it is not relevant to the course.
+3. Nonsense - an input which cannot be handled as it is not relevant to Systems Programming.
 
 The student message is as follows: 
 "${userMsg}"
@@ -71,7 +79,7 @@ Please respond with only the CODE [0-3 or F] associated with the category you be
 	// Extract the category from the response.
 	let category = categoryResponse.choices[0]?.message.content;
 
-	let agent, result, message;
+	let agent, result, response;
 	let isFollowUp = false;
 	if(isValidCategory(category)){
 		ctx.logger.debug("Decided a category: " + category);
@@ -105,7 +113,7 @@ Please respond with only the CODE [0-3 or F] associated with the category you be
 		
 		switch(category){
 			case "0":
-				ctx.logger.debug("Got to category 0.");
+				// ctx.logger.debug("Got to category 0.");
 				agent = await ctx.getAgent({id: "agent_91e4a332fc4502fab17070c01f82c005"});
 				result = await agent.run({data:{
 					user:userName, 
@@ -114,7 +122,19 @@ Please respond with only the CODE [0-3 or F] associated with the category you be
 					lastMessage:lastMessageString??"N/A",
 					lastResponse:lastResponseString??"N/A"
 				}, contentType:"application/json"});
-				message = await result.data.text();
+				response = await result.data.text();
+				break;
+			case "1":
+				// ctx.logger.debug("Got to category 1.");
+				agent = await ctx.getAgent({id: "agent_07b5ae013c8c0fb17bb71cc221742bd6"});
+				result = await agent.run({data:{
+					user:userName, 
+					message:userMsg, 
+					followUp:isFollowUp, 
+					lastMessage:lastMessageString??"N/A",
+					lastResponse:lastResponseString??"N/A"
+				}, contentType:"application/json"});
+				response = await result.data.text();
 				break;
 			default:
 				break;
@@ -123,6 +143,6 @@ Please respond with only the CODE [0-3 or F] associated with the category you be
 	// Remembering the last message.
 	ctx.kv.set("last-message", userName, userMsg);
 	// Remembering the last response.
-	ctx.kv.set("last-response", userName, message ?? "Received nonsense message.");
-	return resp.text(message ?? "Received nonsense message.");
+	ctx.kv.set("last-response", userName, response ?? "Received nonsense message.");
+	return resp.text(response ?? "Received nonsense message.");
 }

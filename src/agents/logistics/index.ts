@@ -27,7 +27,7 @@ export default async function Agent(
 	ctx: AgentContext,
 ) {
 	let userReq: any = await req.data.json();
-	ctx.logger.debug("Got user input: ", userReq);
+	// ctx.logger.debug("Got user input: ", userReq);
 	if(!isValidRequest(userReq)) return resp.text("Invalid user input.");
 	let userMsg = userReq.message;
 	let userName = userReq.user;
@@ -45,14 +45,14 @@ Here is the knowledge base: "${courseInfoString}"
 `
 	// If this is a follow up, let the LLM know about it.
 	if(userReq.followUp){
-		ctx.logger.debug("Adding the follow-up information.");
+		// ctx.logger.debug("Adding the follow-up information.");
 		contentString =`
 * This is a follow-up message from this previous interaction.
 User: "${userReq.lastMessage}"
 You: "${userReq.lastResponse}"
 ` + contentString;
 	}
-	ctx.logger.debug("About to relay the message to logisics.");
+	// ctx.logger.debug("About to relay the message to logisics.");
 	const completion = await client.chat.completions.create({
 		messages: [
 			{
@@ -63,9 +63,8 @@ You: "${userReq.lastResponse}"
 		// This is a really easy task so I am using a less intense model.
 		model: "gpt-4o-mini",
 	});
-	let crsp = completion.choices[0]?.message;
-	let message = crsp?.content;
-	return resp.text(message ?? "Didn't get a response.");
+	let response = completion.choices[0]?.message.content;
+	return resp.text(response ?? "Didn't get a response.");
 }
 
 //Course info here, putting below so it is out of the way.

@@ -24,7 +24,10 @@
   },
   "dependencies": {
     "@agentuity/sdk": "^0.0.112",
-    "openai": "^4.97.0"
+    "openai": "^4.97.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.2.133",
+    "unpdf": "^1.0.4"
   },
   "module": "index.ts"
 }
