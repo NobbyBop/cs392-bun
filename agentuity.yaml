@@ -76,3 +76,6 @@ agents:
   - id: agent_73289c68ac355f309247ecd0b4b028ba
     name: testagent
     description: just helps me test things
+  - id: agent_07b5ae013c8c0fb17bb71cc221742bd6
+    name: textbook
+    description: This agent answers questions using the textbook by looking up relevant pages and then giving information about them.

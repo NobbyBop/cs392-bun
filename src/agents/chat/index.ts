@@ -3,8 +3,6 @@ import OpenAI from "openai";
 
 const client = new OpenAI();
 
-
-
 function isValidCategory(value: string | null | undefined): value is string {
 	return value !== undefined && value !== null && ["0", "1", "2", "3", "F"].includes(value);
 }
@@ -24,7 +22,7 @@ function isValidRequest(data: userRequest | null | undefined): data is userReque
 This agent will take requests (as plain text) from the user and do the following things:
 	1. Categorize it into one of three options:
 		0. Logistics - relating to course logistics.
-		1. Concepts - relating to course concepts covered in the textbook.
+		1. Textbook - relating to course concepts covered in the textbook.
 		2. Code - relating to the programming assignments for the class.
 		OR
 		3. Nonsense - if the user's message cannot be put into any of those three categories.
@@ -48,7 +46,7 @@ export default async function Agent(
 Below is a message from a student regarding the course CS 392: Systems Programming. 
 It is your job to categorize this response as one of the following:
 0. Logistics - relating to course logistics.
-1. Concepts - relating to course concepts covered in the textbook.
+1. Textbook - relating to course concepts covered in the textbook.
 2. Code - asks about a specific homework assignment.
 F. Follow-Up - appears to be asking for repetition, elaboration, or clarification.
 If you decide that the input from the user cannot fall into any of those categories you can place it in a fourth category:
