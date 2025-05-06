@@ -15,7 +15,7 @@ interface userRequest{
 function isValidRequest(data: userRequest | null | undefined): data is userRequest {
 	if(data == undefined || data == null) return false;
 	if(!data.user || !data.message) return false;
-	if(data.testing !== null && "boolean" !== typeof data.testing) return false
+	if(data.testing !== undefined && "boolean" !== typeof data.testing) return false
 	if("string" !== typeof data.user || "string" !== typeof data.message) return false;
 	return true;
 }

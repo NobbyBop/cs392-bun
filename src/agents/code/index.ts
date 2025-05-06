@@ -58,7 +58,7 @@ export default async function Agent(
 	if(!isValidRequest(userReq)) return resp.text("Invalid user input.");
 	let promptString1 = `
 You are going to receive a question regarding homework for a Systems Programming class. It is your
-job to decide what assignment the question is referencing. The assignments are as follows:
+job to decide what assignment  the question is referencing. The assignments are as follows:
 
 Format: Assignment #. Assignment Name (Aliases) - Description
 1. rbin (Recycle Bin, HW1) - a bash scripting assignment where students must create a new command 
@@ -108,11 +108,10 @@ You: "${userReq.lastResponse}"
 
 	let promptString2 = `
 You are going to receieve a question/instruction about a homework assignment from a student.
-You will also receive the instructions and solution to the homework assignment.
-Do your best to answer the student's question, but be sure to never disclose
-the solution file. You may explain concepts about the relevant programming language
+You will also receive the instructions and solution to the homework assignment from the professor.
+Do your best to answer the student's question, but be sure to never directly reference the solution file. 
+You may explain concepts about the relevant programming language
 and how they apply to the assignment, debug code, and give students guidance.
-Keep your response technical and concise, no need to provide guidance unless specifically asked for.
 
 Example:
 	"my function() is not working"
@@ -122,11 +121,12 @@ Example:
 	that the student utlizes the textbook and figures most of it out independently.
 
 The two documents (instructions and solution) should be your PRIMARY source when
-generating a response to the question below. Your response should never exceed 5 sentences (plus code blocks if applicable).
+generating a response to the question below. 
+Your response should NEVER EXCEED 5 sentences (plus code blocks if applicable).
 
 The student message: "${userReq.message}"
-The instructions: "${text}"
-The solution: "${solution}"
+The instructions from the professor: "${text}"
+The solution from the professor: "${solution}"
 `;
 	if(userReq.followUp) promptString2 += `
 * The above is a follow-up message from this previous interaction. Use this to aid in your response.
