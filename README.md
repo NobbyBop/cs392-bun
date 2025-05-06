@@ -23,7 +23,7 @@ Output in testing mode uses gpt-4o-mini instead of gpt-4o. Results are very simi
 
 ### Logistics
 The simplest category - takes the user question and cross-checks the provided course info and syllabus to find the answer.  
-Some example messages that would be redirected to Logistics:
+Some example messages that would be forwarded to Logistics:
 ```
 {
         "user": "Student",
@@ -42,7 +42,7 @@ Then, extracts the text from those pages and uses them to answer the question. A
 Students can ask the agent general questions about any of the topics below:
 Shell Programming, C Programming Language, Systems Programming Concepts, File Subsystem, Process Control Subsystem,
 and Inter-Process Communication.  
-Some example messages that would be redirected to Textbook:
+Some example messages that would be forwarded to Textbook:
 ```
 {
         "user": "Student",
@@ -64,7 +64,7 @@ Students can ask the agent about any of the six assignments below.
 4. minishell - a mini shell, written in C. Students must implement several commands and emulate the functionality of a shell. Involves signal handling. Knowledge of forks(), etc.
 5. sl - Students must utilize pipes to sort the output of ls. Knowledge of forks(), dup2(), etc.
 6. trivia - Students must utilize sockets to create a client and server that runs a real-time trivia game.  
-Some example messages that would be redirected to Code:
+Some example messages that would be forwarded to Code:
 ```
 {
         "user": "Student",
