@@ -9,11 +9,13 @@ A user will send a question or instruction to the Chat agent, which will categor
 ### Chat
 This is the agent that the user will interact with.
 Receives messages in the format:
-    `{
+```
+{
         "user": "username",
         "message": "your message here",
         "testing" (optional): true (default false) //testing switches model to gpt-4o-mini
-    }`
+}
+```
 Categorizes the message into one of 4 categories: Logistics, Textbook, Code, and Nonsense.
 Alternatively, a question can be marked as a Follow-Up which will send it to the most recently used agent.
 
