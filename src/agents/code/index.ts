@@ -1,7 +1,6 @@
 import type { AgentRequest, AgentResponse, AgentContext } from "@agentuity/sdk";
 import { isValidRequest } from "../../validation";
 // See Textbook agent for explanation of pdf-related imports and methodology.
-import { PDFDocument } from "pdf-lib";
 import { definePDFJSModule, extractText, getDocumentProxy } from 'unpdf'
 await definePDFJSModule(async () => {
 	const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
@@ -57,7 +56,6 @@ export default async function Agent(
 ) {
 	let userReq: any = await req.data.json();
 	if(!isValidRequest(userReq)) return resp.text("Invalid user input.");
-	let userMsg = userReq.message;
 	let promptString1 = `
 You are going to receive a question regarding homework for a Systems Programming class. It is your
 job to decide what assignment the question is referencing. The assignments are as follows:
@@ -74,17 +72,17 @@ of a shell. Involves signal handling. Knowledge of forks(), etc.
 5. sl (HW5) - Students must utilize pipes to sort the output of ls. Knowledge of forks(), dup2(), etc.
 6. trivia (project) - Students must utilize sockets to create a client and server that runs a real-time trivia game.
 
-The user question: "${userMsg}"
+The student message: "${userReq.message}"
 
 Please respond with a single number [1-6] with the assignment you feel this is most related to. If you believe the question
 is not related to an assignment, respond with 0.
 	`;
 
 	if(userReq.followUp) promptString1 += `
-The first question is a follow-up to this message: "${userReq.lastMessage}"
-To which you replied: "${userReq.lastResponse}"
-You may consider this original interaction in addition to the message you were given
-when deciding which assignment to choose.
+* The above is a follow-up message from this previous interaction. Use this to aid in your response,
+but focus on responding to the original student message.
+Student: "${userReq.lastMessage}"
+You: "${userReq.lastResponse}"
 `;
 
 	const completion1 = await client.chat.completions.create({
@@ -94,7 +92,7 @@ when deciding which assignment to choose.
 				content: promptString1,
 			},
 		],
-		model: "gpt-4o-mini",
+		model: userReq.testing ? "gpt-4o-mini" : "gpt-4o",
 	});
 	const assignmentNumberResponse = completion1.choices[0]?.message.content;
 	ctx.logger.debug("Determined assignment: ", assignmentNumberResponse);
@@ -109,8 +107,8 @@ when deciding which assignment to choose.
 	const {text} = await extractText(parsingPDF, {mergePages:true});
 
 	let promptString2 = `
-You are going to receieve a question about a homework assignment from a student.
-You will be given the instructions and the solution below.
+You are going to receieve a question/instruction about a homework assignment from a student.
+You will also receive the instructions and solution to the homework assignment.
 Do your best to answer the student's question, but be sure to never disclose
 the solution file. You may explain concepts about the relevant programming language
 and how they apply to the assignment, debug code, and give students guidance.
@@ -126,15 +124,14 @@ Example:
 The two documents (instructions and solution) should be your PRIMARY source when
 generating a response to the question below. Your response should never exceed 5 sentences (plus code blocks if applicable).
 
+The student message: "${userReq.message}"
 The instructions: "${text}"
 The solution: "${solution}"
-The student question: "${userMsg}"
-	`;
+`;
 	if(userReq.followUp) promptString2 += `
-The first question is a follow-up to this message: "${userReq.lastMessage}"
-To which you replied: "${userReq.lastResponse}"
-You may consider this original interaction in addition to the message you were given
-when creating a response.
+* The above is a follow-up message from this previous interaction. Use this to aid in your response.
+User: "${userReq.lastMessage}"
+You: "${userReq.lastResponse}"
 `;
 	const completion2 = await client.chat.completions.create({
 		messages: [
@@ -143,7 +140,7 @@ when creating a response.
 				content: promptString2,
 			},
 		],
-		model: "gpt-4o-mini",
+		model: userReq.testing ? "gpt-4o-mini" : "gpt-4o",
 	});
 
 	const response = completion2.choices[0]?.message.content;

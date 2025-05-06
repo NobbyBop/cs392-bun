@@ -14,28 +14,29 @@ export default async function Agent(
 	let userReq: any = await req.data.json();
 	// ctx.logger.debug("Got user input: ", userReq);
 	if(!isValidRequest(userReq)) return resp.text("Invalid user input.");
-	let userMsg = userReq.message;
-	let contentString =`
-You are going to receive a question/message from a student about course logistics for CS392: Systems Programming.
+	let promptString =`
+You are going to receive a question/instruction from a student about course logistics for a Systems Programming course.
+You will also receive Course Information which contains all relevant material to the course logistics
 You are the sole source of information for this course for students. Generate a response to the question,
-pulling any and all relevant information from the knowledge base which will be provided below.
+pulling any and all relevant information from the Course Information which will be provided below.
 
 Note:
-NEVER refer to the "knowledge base," as the students only have access to this information through you,
+NEVER refer to the "Course Information," as the students only have access to this information through you,
 they should be unaware that you are reading from anything.
 
 Your response should balance as best as possible completeness and brevity. 
 Do not elaborate unless necessary to fulfil the request.
-Do not provide any information that is not in the knowledge base, simply say you don't know.
-Here is the message: "${userMsg}"
-Here is the knowledge base: "${courseInfoString}"
+Do not provide any information that is not in the Course Information, simply say you don't know.
+The student message: "${userReq.message}"
+The Course Information: "${courseInfoString}"
 `
 	// If this is a follow up, let the LLM know about it.
 	if(userReq.followUp){
 		// ctx.logger.debug("Adding the follow-up information.");
-		contentString +=`
-* This is a follow-up message from this previous interaction.
-User: "${userReq.lastMessage}"
+		promptString +=`
+* The above is a follow-up message from this previous interaction. Use this to aid in your response,
+but focus on responding to the original student message.
+Student: "${userReq.lastMessage}"
 You: "${userReq.lastResponse}"
 `;
 	}
@@ -44,11 +45,10 @@ You: "${userReq.lastResponse}"
 		messages: [
 			{
 				role: "user",
-				content: contentString,
+				content: promptString,
 			},
 		],
-		// This is a really easy task so I am using a less intense model.
-		model: "gpt-4o-mini",
+		model: userReq.testing ? "gpt-4o-mini" : "gpt-4o",
 	});
 	let response = completion.choices[0]?.message.content;
 	return resp.text(response ?? "Didn't get a response.");

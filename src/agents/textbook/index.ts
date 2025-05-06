@@ -59,7 +59,6 @@ export default async function Agent(
 	let userReq: any = await req.data.json();
 	// ctx.logger.debug("Got user input: ", userReq);
 	if(!isValidRequest(userReq)) return resp.text("Invalid user input.");
-	let userMsg = userReq.message;
 
 	// If this happens to be a follow up question, the previous question should also be accounted for.
 	let promptString1 = `
@@ -90,7 +89,7 @@ Example:
 Do not include anything other than the page numbers in your response. If you do not believe the message is related to the textbook,
 return an empty [].
 
-The message: "${userMsg}"
+The message: "${userReq.message}"
 The TOC: "${TOC}"
 	`
 	if(userReq.followUp) promptString1 += `
@@ -106,15 +105,15 @@ to determine page numbers, which still must be in [] separated by commas.
 				content: promptString1,
 			},
 		],
-		model: "gpt-4o-mini",
+		model: userReq.testing ? "gpt-4o-mini" : "gpt-4o",
 	});
 
-	const pageNumsResp = completion1.choices[0]?.message.content;
-	ctx.logger.debug("Agent selected pages: ", pageNumsResp);
-	let pageNums = parsePageNums(pageNumsResp);
+	const pageNumsString = completion1.choices[0]?.message.content;
+	ctx.logger.debug("Agent selected pages: ", pageNumsString);
+	let pageNums = parsePageNums(pageNumsString);
 	if(pageNums === null) return resp.text("Cannot answer that with the textbook.")
 	
-	// return resp.text(pageNumsResp?? "Got nothing");
+	// return resp.text(pageNumsString?? "Got nothing");
 	// Creating an intermediate PDF that contains only the pages the agent selected.
 	let resultPDF = await PDFDocument.create();
 	let copiedPages = await resultPDF.copyPages(textbook, pageNums);
@@ -130,18 +129,20 @@ to determine page numbers, which still must be in [] separated by commas.
 	// return resp.text(text);
 
 	let promptString2 =`
-You are going to receieve a user message and an exerpt(s) from the a Systems Programming textbook.
-Based on only the exerpts, try to respond to the message. Use the exerpt(s) as your primary source
+You are going to receieve a student question/instruction regarding Systems Programming concepts.
+You will also receive select exerpts from the a Systems Programming textbook for the course.
+Based on only the exerpts, try to respond to the message. Use the exerpts as your primary source
 for your response. Keep your response clear and concise (no more than 5 sentences for the most
-complicated response). End your message with "Textbook Pages:${pageNumsResp}."
+complicated response). End your message with "Textbook Pages:${pageNumsString}."
 
-The message: "${userMsg}"
+Student message: "${userReq.message}"
 The exerpts: "${text}"
 	`
 	if(userReq.followUp) promptString2 += `
-The first message is a follow-up to this message: "${userReq.lastMessage}"
-To which you replied: "${userReq.lastResponse}"
-You may use this interaction to assist with your response. Please acknowledge the follow-up and that you will do better this time before responding.
+* The above is a follow-up message from this previous interaction. Use this to aid in your response,
+but focus on responding to the original student message.
+Student: "${userReq.lastMessage}"
+You: "${userReq.lastResponse}"
 `
 
 	// Finally, we ask the agent to answer the question based on the selected pages from the textbook!
@@ -152,7 +153,7 @@ You may use this interaction to assist with your response. Please acknowledge th
 				content: promptString2,
 			},
 		],
-		model: "gpt-4o-mini",
+		model: userReq.testing ? "gpt-4o-mini" : "gpt-4o",
 	});
 
 	const response = completion2.choices[0]?.message.content;

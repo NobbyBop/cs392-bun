@@ -15,7 +15,8 @@ interface userRequest{
 function isValidRequest(data: userRequest | null | undefined): data is userRequest {
 	if(data == undefined || data == null) return false;
 	if(!data.user || !data.message) return false;
-	if("string" != typeof data.user || "string" != typeof data.message) return false;
+	if(data.testing !== null && "boolean" !== typeof data.testing) return false
+	if("string" !== typeof data.user || "string" !== typeof data.message) return false;
 	return true;
 }
 
@@ -43,15 +44,12 @@ export default async function Agent(
 	if(!isValidRequest(userReq)) return resp.text(`Invalid user input.
 Must be of the format:
 {
-	"user": "username",
+	"user": "userReq.user",
 	"message": "your message here",
 	"testing": true (optional, default false)
-}`);
-	let userMsg = userReq.message;
-	let userName = userReq.user;
-	
+}`);	
 	// Setting up prompt, adding last category used if applicable.
-	let contentString =`
+	let promptString =`
 The Systems Programming Course (CS 392) covers a six main topics spread across different chapters:
 Shell Programming, C Programming Language, Systems Programming Concepts, File Subsystem, Process Control Subsystem,
 and Inter-Process Communication.
@@ -79,24 +77,23 @@ If you decide that the input from the user cannot fall into any of those categor
 	- should be reserved for messages that are clearly unanswerable.
 	- vague questions should be considered follow-ups most of the time.
 
-The student message is as follows: 
-"${userMsg}"
+The student message: "${userReq.message}"
 
 Please respond with only the CODE [0-3 or F] associated with the category you believe the message falls under.
 `
 	// Sending message to OpenAI.
-	const categoryResponse = await client.chat.completions.create({
+	const completion = await client.chat.completions.create({
 		messages: [
 			{
 				role: "user",
-				content: contentString,
+				content: promptString,
 			},
 		],
-		model: "gpt-4o-mini",
+		model: userReq.testing ? "gpt-4o-mini": "gpt-4o",
 	});
 
 	// Extract the category from the response.
-	let category = categoryResponse.choices[0]?.message.content;
+	let category = completion.choices[0]?.message.content;
 
 	let agent, result, response;
 	let isFollowUp = false;
@@ -108,14 +105,14 @@ Please respond with only the CODE [0-3 or F] associated with the category you be
 		let lastCategoryString, lastMessage, lastMessageString, lastResponse, lastResponseString;
 		if(category === "F") {
 			isFollowUp = true;
-			let lastCategory = await ctx.kv.get("last-category", userName);
+			let lastCategory = await ctx.kv.get("last-category", userReq.user);
 			if(lastCategory.exists){ 
 				// If there is a last category, get it. Also, get the last message and response.
 				lastCategoryString = await lastCategory.data.text()
-				lastMessage = await ctx.kv.get("last-message", userName);
+				lastMessage = await ctx.kv.get("last-message", userReq.user);
 				if(lastMessage.exists) lastMessageString = await lastMessage.data.text();
 				else lastMessageString = "N/A";
-				lastResponse = await ctx.kv.get("last-response", userName);
+				lastResponse = await ctx.kv.get("last-response", userReq.user);
 				if(lastResponse.exists) lastResponseString = await lastResponse.data.text();
 				else lastResponseString = "N/A";
 				// ctx.logger.debug("Follow up detected: ", {lastCategory, lastMessage, lastResponse})
@@ -127,15 +124,16 @@ Please respond with only the CODE [0-3 or F] associated with the category you be
 		}
 
 		// Update the context, regardless of whether this is a follow up.
-		await ctx.kv.set("last-category", userName, category);
+		await ctx.kv.set("last-category", userReq.user, category);
 		
 		switch(category){
 			case "0":
 				// ctx.logger.debug("Got to category 0.");
 				agent = await ctx.getAgent({id: "agent_91e4a332fc4502fab17070c01f82c005"});
 				result = await agent.run({data:{
-					user:userName, 
-					message:userMsg, 
+					user:userReq.user, 
+					message:userReq.message,
+					testing:userReq.testing??false, 
 					followUp:isFollowUp, 
 					lastMessage:lastMessageString??"N/A",
 					lastResponse:lastResponseString??"N/A"
@@ -146,8 +144,9 @@ Please respond with only the CODE [0-3 or F] associated with the category you be
 				// ctx.logger.debug("Got to category 1.");
 				agent = await ctx.getAgent({id: "agent_07b5ae013c8c0fb17bb71cc221742bd6"});
 				result = await agent.run({data:{
-					user:userName, 
-					message:userMsg, 
+					user:userReq.user, 
+					message:userReq.message,
+					testing:userReq.testing??false, 
 					followUp:isFollowUp, 
 					lastMessage:lastMessageString??"N/A",
 					lastResponse:lastResponseString??"N/A"
@@ -158,8 +157,9 @@ Please respond with only the CODE [0-3 or F] associated with the category you be
 				// ctx.logger.debug("Got to category 2.");
 				agent = await ctx.getAgent({id: "agent_3f979e28e59008c034198ef28ef675b9"});
 				result = await agent.run({data:{
-					user:userName, 
-					message:userMsg, 
+					user:userReq.user, 
+					message:userReq.message,
+					testing:userReq.testing??false,  
 					followUp:isFollowUp, 
 					lastMessage:lastMessageString??"N/A",
 					lastResponse:lastResponseString??"N/A"
@@ -171,8 +171,8 @@ Please respond with only the CODE [0-3 or F] associated with the category you be
 		}
 	} 
 	// Remembering the last message.
-	ctx.kv.set("last-message", userName, userMsg);
+	ctx.kv.set("last-message", userReq.user, userReq.message);
 	// Remembering the last response.
-	ctx.kv.set("last-response", userName, response ?? "Received nonsense message.");
+	ctx.kv.set("last-response", userReq.user, response ?? "Received nonsense message.");
 	return resp.text(response ?? "Received nonsense message.");
 }
