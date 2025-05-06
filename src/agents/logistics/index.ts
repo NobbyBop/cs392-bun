@@ -1,25 +1,10 @@
 import type { AgentRequest, AgentResponse, AgentContext } from "@agentuity/sdk";
+import { isValidRequest } from "../../validation";
 import OpenAI from "openai";
 
 const client = new OpenAI();
 // const filePath = `${import.meta.dir}/knowledge.txt`;
 // const courseInfo = await Bun.file(filePath).text();
-
-interface userRequest{
-	user: string;
-	message: string;
-	followUp: boolean;
-	lastMessage: string;
-	lastResponse: string;
-}
-
-function isValidRequest(data: userRequest | null | undefined): data is userRequest {
-	if(data === undefined || data === null) return false;
-	if(!data.user || !data.message || data.followUp === undefined || !data.lastMessage || !data.lastResponse) return false;
-	if("string" != typeof data.user || "string" != typeof data.message || "boolean" != typeof data.followUp
-		|| "string" != typeof data.lastMessage || "string" != typeof data.lastResponse) return false;
-	return true;
-}
 
 export default async function Agent(
 	req: AgentRequest,
@@ -30,27 +15,29 @@ export default async function Agent(
 	// ctx.logger.debug("Got user input: ", userReq);
 	if(!isValidRequest(userReq)) return resp.text("Invalid user input.");
 	let userMsg = userReq.message;
-	let userName = userReq.user;
 	let contentString =`
-You are going to receive a logistical message about the course CS 392: Systems Programming.
-Below you will find a knowledge base from which you can pull to answer this message. When possible,
-pull directly from the knowledge base as your answer. You may use some reason to answer questions, 
-but admitting you cannot find the answer is better than an incorrect answer. Keep your answer brief 
-(no more than 3 sentences for the most complicated response.)
-If the message is nonsensical or cannot be answered with the knowledge base below first look to see 
-if it is a follow up, and if not, send a simple message saying you cannot respond. 
-You can do the same for trivial greetings, farewells, and thank you's. 
+You are going to receive a question/message from a student about course logistics for CS392: Systems Programming.
+You are the sole source of information for this course for students. Generate a response to the question,
+pulling any and all relevant information from the knowledge base which will be provided below.
+
+Note:
+NEVER refer to the "knowledge base," as the students only have access to this information through you,
+they should be unaware that you are reading from anything.
+
+Your response should balance as best as possible completeness and brevity. 
+Do not elaborate unless necessary to fulfil the request.
+Do not provide any information that is not in the knowledge base, simply say you don't know.
 Here is the message: "${userMsg}"
 Here is the knowledge base: "${courseInfoString}"
 `
 	// If this is a follow up, let the LLM know about it.
 	if(userReq.followUp){
 		// ctx.logger.debug("Adding the follow-up information.");
-		contentString =`
+		contentString +=`
 * This is a follow-up message from this previous interaction.
 User: "${userReq.lastMessage}"
 You: "${userReq.lastResponse}"
-` + contentString;
+`;
 	}
 	// ctx.logger.debug("About to relay the message to logisics.");
 	const completion = await client.chat.completions.create({

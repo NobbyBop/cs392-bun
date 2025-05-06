@@ -55,8 +55,11 @@ It is your job to categorize this message as one of the following:
 	- relating to Systems Programming concepts covered in one of the six textbook chapters. 
 	- if it is a general programming question, you should select this category.
 2. Code 
-	- asks about a specific homework assignment.
+	- asks about specific code or functionality for a specific homework assignment.
+		-homework assignments include: rbin, bst, pfind, minishell, sl, and trivia (project)
 	- asks for feedback about specific piece of code.
+	- general questions about assignments can be considered logistical.
+
 F. Follow-Up 
 	- appears to be asking for repetition, elaboration, or clarification.
 	- uses correcting language like "no".
@@ -135,6 +138,18 @@ Please respond with only the CODE [0-3 or F] associated with the category you be
 			case "1":
 				// ctx.logger.debug("Got to category 1.");
 				agent = await ctx.getAgent({id: "agent_07b5ae013c8c0fb17bb71cc221742bd6"});
+				result = await agent.run({data:{
+					user:userName, 
+					message:userMsg, 
+					followUp:isFollowUp, 
+					lastMessage:lastMessageString??"N/A",
+					lastResponse:lastResponseString??"N/A"
+				}, contentType:"application/json"});
+				response = await result.data.text();
+				break;
+			case "2":
+				// ctx.logger.debug("Got to category 2.");
+				agent = await ctx.getAgent({id: "agent_3f979e28e59008c034198ef28ef675b9"});
 				result = await agent.run({data:{
 					user:userName, 
 					message:userMsg, 

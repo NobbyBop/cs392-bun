@@ -79,3 +79,6 @@ agents:
   - id: agent_07b5ae013c8c0fb17bb71cc221742bd6
     name: textbook
     description: This agent answers questions using the textbook by looking up relevant pages and then giving information about them.
+  - id: agent_3f979e28e59008c034198ef28ef675b9
+    name: code
+    description: Helps students with code related to Systems Programming Assignments.

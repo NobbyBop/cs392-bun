@@ -1,4 +1,5 @@
 import type { AgentRequest, AgentResponse, AgentContext } from "@agentuity/sdk";
+import { isValidRequest } from "../../validation";
 /*
 	Using a combo of pdf-lib and unpdf (which uses Mozilla pdf.js) here.
 	pdf-lib splits the main textbook into a smaller pdf which
@@ -27,22 +28,6 @@ const textbook = await PDFDocument.load(textbookBytes);
 
 // The 12th page (0-indexed) of the PDF document is "page 1".
 const OFFSET = 12;
-
-interface userRequest{
-	user: string;
-	message: string;
-	followUp: boolean;
-	lastMessage: string;
-	lastResponse: string;
-}
-
-function isValidRequest(data: userRequest | null | undefined): data is userRequest {
-	if(data === undefined || data === null) return false;
-	if(!data.user || !data.message || data.followUp === undefined || !data.lastMessage || !data.lastResponse) return false;
-	if("string" != typeof data.user || "string" != typeof data.message || "boolean" != typeof data.followUp
-		|| "string" != typeof data.lastMessage || "string" != typeof data.lastResponse) return false;
-	return true;
-}
 
 function parsePageNums(data: string | null | undefined): number[] | null {
 	if ("string" !== typeof data) return null;
@@ -84,7 +69,7 @@ The format of each line in the TOC is: Section Number, Section Title, Start Page
 
 It is your job to select between 1-3 SECTIONS from the the textbook based what
 you believe will best answer the message. Please PAGE NUMBERS in [] associated with each section, separated by commas.
-Your final result should have at between 1-7 pages total. NO MORE THAN 5 pages.
+Your final result should have at between 1-10 pages total.
 
 Note: to determine which page numbers go with which sections look at where your chosen section begins, 
 and choose consecutive pages between (inclusive) your chosen section and the next section. (They will all not be explicitly listed.)
@@ -181,7 +166,6 @@ You may use this interaction to assist with your response. Please acknowledge th
 	Requiring the agent to use this first will protect it against reading the entire PDF every time
 	when only specific sections are required.
 */
-
 const TOC =`
 Contents
 1 What the Shell? (page 1)
