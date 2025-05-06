@@ -1,4 +1,4 @@
-# CS 392 Agentuity Project
+# CS 392: Systems Programming Helper Agents
 This example project provides a set of agents that can help students with logistical, conceptual, and practical questions about the Systems Programming course at SIT.
 
 ## Flow
