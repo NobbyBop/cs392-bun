@@ -9,6 +9,7 @@ function isValidCategory(value: string | null | undefined): value is string {
 interface userRequest{
 	user: string;
 	message: string;
+	testing?: boolean;
 }
 
 function isValidRequest(data: userRequest | null | undefined): data is userRequest {
@@ -39,7 +40,13 @@ export default async function Agent(
 ) {
 	// Extracting data from request, checking if in proper format.
 	let userReq: any = await req.data.json();
-	if(!isValidRequest(userReq)) return resp.text("Invalid user input.");
+	if(!isValidRequest(userReq)) return resp.text(`Invalid user input.
+Must be of the format:
+{
+	"user": "username",
+	"message": "your message here",
+	"testing": true (optional, default false)
+}`);
 	let userMsg = userReq.message;
 	let userName = userReq.user;
 	
@@ -48,9 +55,11 @@ export default async function Agent(
 The Systems Programming Course (CS 392) covers a six main topics spread across different chapters:
 Shell Programming, C Programming Language, Systems Programming Concepts, File Subsystem, Process Control Subsystem,
 and Inter-Process Communication.
-Below is a message from a student regarding the course CS 392.
+You are going to receieve a student question/instruction related to CS 392.
 It is your job to categorize this message as one of the following:
-0. Logistics - relating to course logistics.
+0. Logistics 
+	- relating to course logistics.
+	- course info, hours, meeting times, policies, etc.
 1. Textbook 
 	- relating to Systems Programming concepts covered in one of the six textbook chapters. 
 	- if it is a general programming question, you should select this category.
@@ -59,7 +68,6 @@ It is your job to categorize this message as one of the following:
 		-homework assignments include: rbin, bst, pfind, minishell, sl, and trivia (project)
 	- asks for feedback about specific piece of code.
 	- general questions about assignments can be considered logistical.
-
 F. Follow-Up 
 	- appears to be asking for repetition, elaboration, or clarification.
 	- uses correcting language like "no".
@@ -98,7 +106,6 @@ Please respond with only the CODE [0-3 or F] associated with the category you be
 		// If the category is F that means this is a follow-up question, so before sending off to another agent, 
 		// get the context of the last interaction. We only need to run this if the question is marked as follow up.
 		let lastCategoryString, lastMessage, lastMessageString, lastResponse, lastResponseString;
-
 		if(category === "F") {
 			isFollowUp = true;
 			let lastCategory = await ctx.kv.get("last-category", userName);
@@ -111,7 +118,7 @@ Please respond with only the CODE [0-3 or F] associated with the category you be
 				lastResponse = await ctx.kv.get("last-response", userName);
 				if(lastResponse.exists) lastResponseString = await lastResponse.data.text();
 				else lastResponseString = "N/A";
-				ctx.logger.debug("Follow up detected: ", {lastCategory, lastMessage, lastResponse})
+				// ctx.logger.debug("Follow up detected: ", {lastCategory, lastMessage, lastResponse})
 			}
 			// If the question was marked as a follow-up, and there was no previous interaction to follow up on, 
 			// OR the previous category was Nonsense then the current category is marked as (3) Nonsense.
