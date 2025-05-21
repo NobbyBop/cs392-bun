@@ -58,7 +58,7 @@ export default async function Agent(
 	if(!isValidRequest(userReq)) return resp.text("Invalid user input.");
 	let promptString1 = `
 You are going to receive a question regarding homework for a Systems Programming class. It is your
-job to decide what assignment  the question is referencing. The assignments are as follows:
+job to decide what assignment the question is referencing. The assignments are as follows:
 
 Format: Assignment #. Assignment Name (Aliases) - Description
 1. rbin (Recycle Bin, HW1) - a bash scripting assignment where students must create a new command 
